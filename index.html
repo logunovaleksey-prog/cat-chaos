@@ -2,7 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a1320">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Кошачий беспредел">
 <title>Кошачий беспредел</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,6 +15,7 @@
 <style>
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
+body.mob{position:fixed;inset:0}
 
 /* Layout: evening living-room cabinet — title strip, HUD bar, wide game screen, controls cheat sheet */
 :root{
@@ -87,6 +93,66 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
 kbd{font-family:var(--font);font-weight:600;font-size:13px;background:var(--ink);border:1px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:0 6px;color:var(--fg)}
 .help ul{margin:0;padding-left:18px;color:var(--muted);display:grid;gap:6px}
 .help li b{color:var(--fg);font-weight:600}
+
+/* ---------- mobile (touch) layout ---------- */
+.stage canvas{position:relative;z-index:0}
+.mhud,.mctl,.rot{display:none}
+.toast{z-index:4}.overlay{z-index:6}
+body.mob{padding:0!important;margin:0;overflow:hidden;background:#000;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+body.mob .wrap{max-width:none}
+body.mob .wrap>header,body.mob .hud,body.mob .help,body.mob .pad{display:none!important}
+body.mob .stage{position:fixed;inset:0;border-radius:0;box-shadow:none;background:#000}
+body.mob:not(.portrait) .stage canvas{width:100%;height:100%;aspect-ratio:auto}
+body.mob .mhud{display:flex;position:absolute;z-index:3;left:0;right:0;top:0;align-items:center;gap:6px 12px;flex-wrap:wrap;
+  padding:calc(env(safe-area-inset-top,0px) + 5px) max(10px,env(safe-area-inset-right,0px)) 14px max(10px,env(safe-area-inset-left,0px));
+  background:linear-gradient(rgba(12,7,16,.78),rgba(12,7,16,.45) 65%,rgba(12,7,16,0));color:var(--fg);font-size:12px;line-height:1;pointer-events:none}
+.mhud>*{pointer-events:auto}
+.mhud .ms{display:flex;align-items:baseline;gap:5px;font-variant-numeric:tabular-nums}
+.mhud .ml{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.mhud b{font-weight:800;font-size:14px}
+.mhud b.low{color:var(--hot)}
+.mhud .mbar{width:64px;height:7px;border-radius:4px;background:rgba(0,0,0,.55);overflow:hidden;position:relative;align-self:center}
+.mhud .mbar i{position:absolute;inset:0 auto 0 0;width:0;border-radius:4px;background:var(--calm);transition:width .15s linear}
+.mnbs{display:flex;gap:9px}
+.mnb{display:flex;align-items:center;gap:2px}
+.mnb i{font-style:normal;font-weight:700;font-size:11px;color:var(--muted);margin-right:2px}
+.mnb s{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.18)}
+.mnb s.on{background:var(--hot);box-shadow:0 0 5px var(--hot)}
+.mtog{margin-left:auto;display:flex;gap:6px}
+.ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;padding:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:var(--fg);cursor:pointer;position:relative;touch-action:manipulation}
+.ic svg{width:16px;height:16px;fill:currentColor}
+.ic[aria-pressed="false"]{opacity:.45}
+.ic[aria-pressed="false"]::after{content:"";position:absolute;width:20px;height:2px;background:var(--hot);transform:rotate(-45deg);border-radius:2px}
+.ic.pz{width:32px;height:32px;background:rgba(255,255,255,.14)}
+body.mob .mctl{display:block;position:absolute;z-index:2;inset:0;pointer-events:none}
+.joy{position:absolute;left:max(6px,env(safe-area-inset-left,0px));bottom:max(4px,env(safe-area-inset-bottom,0px));width:min(46vh,190px);height:min(46vh,190px);pointer-events:auto;touch-action:none}
+.joy-base{position:absolute;inset:14%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),rgba(255,255,255,.04) 70%);border:2px solid rgba(255,255,255,.28);box-shadow:inset 0 0 18px rgba(0,0,0,.35)}
+.joy-base::before,.joy-base::after{content:"";position:absolute;left:50%;top:50%;width:70%;height:2px;margin-left:-35%;background:rgba(255,255,255,.1)}
+.joy-base::after{transform:rotate(90deg)}
+.joy-knob{position:absolute;left:50%;top:50%;width:40%;height:40%;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#ffd6a6,#f39a45 58%,#b8561b);box-shadow:0 4px 12px rgba(0,0,0,.45),inset 0 -3px 6px rgba(0,0,0,.2)}
+.joy-knob .kn{position:absolute;inset:0;transform:translate(0,0)}
+.joy.on .joy-base{border-color:rgba(243,154,69,.6)}
+.mbtns{position:absolute;right:max(8px,env(safe-area-inset-right,0px));bottom:max(6px,env(safe-area-inset-bottom,0px));width:min(48vh,200px);height:min(48vh,200px);pointer-events:none}
+.mbtns button{position:absolute;width:34%;height:34%;border-radius:50%;pointer-events:auto;touch-action:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0;
+  background:rgba(28,18,34,.55);border:2px solid rgba(255,255,255,.3);color:#fff;font:600 10px/1 var(--font);
+  box-shadow:0 3px 10px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.mbtns button svg{width:44%;height:44%;fill:currentColor}
+.mbtns .b-jump{left:31%;bottom:0;width:38%;height:38%;background:rgba(243,154,69,.88);border-color:rgba(255,220,180,.8);color:#2a1206}
+.mbtns .b-claw{left:33%;top:0}
+.mbtns .b-paw{left:0;top:33%}
+.mbtns .b-meow{right:0;top:33%}
+.mbtns button.on{transform:scale(.9);filter:brightness(1.25)}
+body.mob .toast{top:calc(env(safe-area-inset-top,0px) + 44px);font-size:13px;padding:6px 12px}
+body.mob.portrait .stage{display:flex;flex-direction:column;background:#120c16}
+body.mob.portrait .mhud{position:relative;order:0;background:#120c16;padding-bottom:8px}
+body.mob.portrait .stage canvas{order:1;width:100%;height:auto;aspect-ratio:16/9;flex:none}
+body.mob.portrait .mctl{position:relative;order:2;flex:1;inset:auto}
+body.mob.portrait .joy{width:min(44vw,200px);height:min(44vw,200px);bottom:max(16px,env(safe-area-inset-bottom,0px))}
+body.mob.portrait .mbtns{width:min(46vw,210px);height:min(46vw,210px);bottom:max(16px,env(safe-area-inset-bottom,0px))}
+body.mob.portrait .rot{display:block;position:absolute;top:14px;left:16px;right:16px;text-align:center;color:var(--muted);font-size:13px}
+@media (max-height:520px){.overlay{gap:7px;padding:10px}.overlay h2{font-size:20px}.overlay p{display:none}.overlay .big{font-size:22px}.overlay .rank{font-size:14px}.btn{padding:9px 22px;font-size:15px}.pick b{font-size:13px}.pick small{display:none}.pick button{width:clamp(96px,15vw,140px);padding:4px 6px 6px}}
 </style>
 </head>
 <body>
@@ -111,6 +177,29 @@ kbd{font-family:var(--font);font-weight:600;font-size:13px;background:var(--ink)
 
   <div class="stage" id="stage">
     <canvas id="game" width="1280" height="720" aria-label="Игровое поле: рыжий кот в квартире"></canvas>
+    
+    <div class="mhud" id="mhud">
+      <button class="ic pz" id="m-pause" type="button" aria-label="Пауза"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+      <div class="ms"><span class="ml">Хаос</span><b id="m-score">0</b></div>
+      <div class="ms"><span class="ml">Хозяева</span><b id="m-time">2:50</b></div>
+      <div class="ms"><span class="ml">Шум</span><div class="mbar"><i id="m-noise"></i></div></div>
+      <div class="mnbs" id="m-nbs"></div>
+      <div class="mtog">
+        <button class="ic" data-tog="t-music" type="button" aria-label="Музыка" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17V6l10-2v11" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="15" r="2.6"/></svg></button>
+        <button class="ic" data-tog="t-sfx" type="button" aria-label="Звуки" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a4.5 4.5 0 010 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="ic" data-tog="t-voice" type="button" aria-label="Голоса" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h16v11H11l-5 4.5v-4.5H4z"/></svg></button>
+      </div>
+    </div>
+    <div class="mctl" id="mctl">
+      <div class="rot">Поверни телефон горизонтально — так удобнее</div>
+      <div class="joy" id="joy" aria-label="Джойстик"><div class="joy-base"></div><div class="joy-knob" id="knob"></div></div>
+      <div class="mbtns">
+        <button data-k="claw" class="b-claw" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l4 16M11 4l4 16M16 4l4 16" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>Когти</button>
+        <button data-k="paw" class="b-paw" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16" rx="5" ry="4.2"/><circle cx="5.8" cy="10.2" r="2.1"/><circle cx="9.6" cy="6.4" r="2.1"/><circle cx="14.4" cy="6.4" r="2.1"/><circle cx="18.2" cy="10.2" r="2.1"/></svg>Лапа</button>
+        <button data-k="meow" class="b-meow" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l.8-5.5L10 6.5h4l4.2-3L19 9c1 1.4 1.5 2.8 1.5 4.4 0 4.3-3.8 6.8-8.5 6.8s-8.5-2.5-8.5-6.8C3.5 11.8 4 10.4 5 9z"/></svg>Мяу</button>
+        <button data-k="jump" class="b-jump" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7.5 8.5h-4.5v8.5h-6V12H4.5z"/></svg>Прыжок</button>
+      </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <div class="overlay" id="ov-start">
@@ -185,7 +274,8 @@ kbd{font-family:var(--font);font-weight:600;font-size:13px;background:var(--ink)
 /* =========================================================
    CONSTANTS & HELPERS
    ========================================================= */
-const S=4,VW=320,VH=180,W=1200,FLOOR=164,G=620,SPEED=94,JUMP=292,TIME=170;
+const S=4,VH=180,W=1200,FLOOR=164,G=620,SPEED=94,JUMP=292,TIME=170;
+let VW=320;
 const cv=document.getElementById('game'),ctx=cv.getContext('2d');
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -822,8 +912,8 @@ addEventListener('keydown',e=>{const k=KEYMAP[e.code];
  if(!held.has(k))pressed.add(k);held.add(k);});
 addEventListener('keyup',e=>{const k=KEYMAP[e.code];if(k)held.delete(k);});
 addEventListener('blur',()=>{held.clear();if(st.mode==='play')togglePause();});
-document.querySelectorAll('#pad button').forEach(b=>{const k=b.dataset.k;
- const on=e=>{e.preventDefault();ac();if(!held.has(k))pressed.add(k);held.add(k);b.classList.add('on');try{b.setPointerCapture(e.pointerId);}catch(_){}};
+document.querySelectorAll('#pad button, .mbtns button').forEach(b=>{const k=b.dataset.k;
+ const on=e=>{e.preventDefault();ac();try{navigator.vibrate&&navigator.vibrate(12);}catch(_){}if(!held.has(k))pressed.add(k);held.add(k);b.classList.add('on');try{b.setPointerCapture(e.pointerId);}catch(_){}};
  const off=()=>{held.delete(k);b.classList.remove('on');};
  b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);
  b.addEventListener('contextmenu',e=>e.preventDefault());});
@@ -864,7 +954,7 @@ function neighbourReacts(){
 }
 let toastT=0;const toastEl=document.getElementById('toast');
 function toast(html){toastEl.innerHTML=html;toastEl.classList.add('show');toastT=2.8;}
-function renderNbs(){document.getElementById('nbs').innerHTML=nbs.map(n=>'<span class="nb"><b>'+n.name+'</b><span class="pips" aria-label="злость '+n.anger+' из 3">'+
+function renderNbs(){const mn=document.getElementById('m-nbs');if(mn)mn.innerHTML=nbs.map(n=>'<span class="mnb" title="'+n.name+'"><i>'+n.name[0]+'</i>'+[0,1,2].map(i=>'<s'+(i<n.anger?' class="on"':'')+'></s>').join('')+'</span>').join('');document.getElementById('nbs').innerHTML=nbs.map(n=>'<span class="nb"><b>'+n.name+'</b><span class="pips" aria-label="злость '+n.anger+' из 3">'+
  [0,1,2].map(i=>'<span'+(i<n.anger?' class="on"':'')+'></span>').join('')+'</span></span>').join('');}
 const overlapsClimb=()=>{const cx=cat.x+cat.w/2;return CLIMB.find(r=>cx>=r.x-2&&cx<=r.x+r.w+2&&cat.b>r.y+3&&cat.b-4<=r.y+r.h);};
 function platAt(y,tol){const cx=cat.x+cat.w/2;return PL_ALL.find(p=>Math.abs(p.y-y)<=tol&&cx>=p.x&&cx<=p.x+p.w);}
@@ -1126,7 +1216,7 @@ function setCat(id){if(!CATDEFS[id])return;curCat=id;CD=CATDEFS[id];CC=CD.pal;sy
    RENDER: frame
    ========================================================= */
 const LC=mk(640,360),lx=LC.getContext('2d');
-const VIG=mk(1280,720);{const v=VIG.getContext('2d');v.fillStyle=RG(v,640,360,240,640,360,820,[[0,'rgba(0,0,0,0)'],[1,'rgba(10,4,14,.62)']]);v.fillRect(0,0,1280,720);}
+let VIG=null;function buildVig(){const w=cv.width;VIG=mk(w,720);const v=VIG.getContext('2d');v.fillStyle=RG(v,w/2,360,240,w/2,360,Math.max(820,w*.6),[[0,'rgba(0,0,0,0)'],[1,'rgba(10,4,14,.62)']]);v.fillRect(0,0,w,720);}buildVig();
 function lampDraw(x,i){const L=LAMPS[i],a=lampSway[i].a*.25;x.save();x.translate(L.x,16);x.rotate(a);
  x.strokeStyle='#2a1e18';x.lineWidth=.3;x.beginPath();x.moveTo(0,0);x.lineTo(0,15);x.stroke();
  ell(x,0,.6,1.6,.6);x.fillStyle='#3a2a20';x.fill();
@@ -1139,9 +1229,9 @@ function render(now){
  const t=now/1000;
  let sx=0,sy=0;if(st.shake>0&&!reduceMotion){const a=(Math.random()*2-1)*3*Math.min(1,st.shake*2);if(st.shakeAx==='x')sx=a;else sy=a;}
  const cpx=Math.round(st.cam*S),sxp=Math.round(sx*S),syp=Math.round(sy*S),cam=cpx/S;
- ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.fillStyle='#0b0710';ctx.fillRect(0,0,1280,720);
- ctx.drawImage(WALLW,cpx,0,1280,720,sxp,syp,1280,720);
- ctx.drawImage(FURN,cpx,0,1280,720,sxp,syp,1280,720);
+ ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.fillStyle='#0b0710';const CW=cv.width;ctx.fillRect(0,0,CW,720);
+ ctx.drawImage(WALLW,cpx,0,CW,720,sxp,syp,CW,720);
+ ctx.drawImage(FURN,cpx,0,CW,720,sxp,syp,CW,720);
  ctx.setTransform(S,0,0,S,-cpx+sxp,syp);
  // TV screen (aquarium cartoon) + laptop (drawn before light; re-lit after as emissive)
  drawScreens(ctx,t,false);
@@ -1173,8 +1263,8 @@ function render(now){
  ctx.globalAlpha=1;
  // ---- lighting ----
  const tv=.75+.25*Math.sin(t*7.3)*Math.sin(t*3.1+1),lampIt=lampItem();
- lx.setTransform(1,0,0,1,0,0);lx.globalCompositeOperation='source-over';lx.clearRect(0,0,640,360);
- lx.fillStyle='rgba(12,7,30,.6)';lx.fillRect(0,0,640,360);
+ lx.setTransform(1,0,0,1,0,0);lx.globalCompositeOperation='source-over';lx.clearRect(0,0,LC.width,360);
+ lx.fillStyle='rgba(12,7,30,.6)';lx.fillRect(0,0,LC.width,360);
  lx.setTransform(2,0,0,2,-cam*2+sx*2,sy*2);lx.globalCompositeOperation='destination-out';
  const hole=(x0,y0,r,a)=>{lx.fillStyle=RG(lx,x0,y0,0,x0,y0,r,[[0,'rgba(0,0,0,'+a+')'],[.55,'rgba(0,0,0,'+(a*.45)+')'],[1,'rgba(0,0,0,0)']]);lx.fillRect(x0-r,y0-r,r*2,r*2);};
  for(let i=0;i<3;i++){const [px,py]=lampPos(i);hole(px,py+8,140,.85);
@@ -1187,7 +1277,7 @@ function render(now){
  hole(1116,112,34,.6);
  for(let i=0;i<10;i++)hole(866+i*8,35+Math.abs(Math.sin(i*1.3))*3,10,.5);
  lx.globalCompositeOperation='source-over';
- ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(LC,0,0,640,360,0,0,1280,720);
+ ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(LC,0,0,LC.width,360,0,0,CW,720);
  // warm/cool colour glow
  ctx.setTransform(S,0,0,S,-cpx+sxp,syp);ctx.globalCompositeOperation='lighter';
  const glow=(x0,y0,r,col,a)=>{ctx.fillStyle=RG(ctx,x0,y0,0,x0,y0,r,[[0,rgba(col,a)],[1,rgba(col,0)]]);ctx.fillRect(x0-r,y0-r,r*2,r*2);};
@@ -1222,7 +1312,7 @@ function render(now){
   const k=Math.min(1,tx.life*2),sc=1+Math.max(0,tx.life-1.15)*1.6;ctx.save();ctx.translate(px,tx.y);ctx.scale(sc,sc);ctx.globalAlpha=k;
   ctx.strokeStyle='rgba(30,12,8,.9)';ctx.lineWidth=1.6;ctx.strokeText(tx.s,0,0);ctx.fillStyle=tx.col;ctx.fillText(tx.s,0,0);ctx.restore();}
  ctx.globalAlpha=1;
- if(st.mode==='play'){ctx.setTransform(1,0,0,1,0,0);const rm=['Кухня','Гостиная','Спальня'][roomOf(cat.x+7)];ctx.font='600 26px Rubik, system-ui, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+ if(st.mode==='play'&&!MOB){ctx.setTransform(1,0,0,1,0,0);const rm=['Кухня','Гостиная','Спальня'][roomOf(cat.x+7)];ctx.font='600 26px Rubik, system-ui, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
   const w=ctx.measureText(rm).width;rr(ctx,18,18,w+32,42,21);ctx.fillStyle='rgba(18,10,22,.62)';ctx.fill();ctx.fillStyle='#f6ece0';ctx.fillText(rm,34,40);}
 }
 function drawScreens(x,t,emissive){
@@ -1248,9 +1338,11 @@ let lastHud='';
 function hud(){const s=Math.ceil(st.t),tm=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'),n=Math.round(st.noise);
  const key=st.score+'|'+tm+'|'+n;if(key===lastHud)return;lastHud=key;
  $score.textContent=st.score;$time.textContent=tm;$time.classList.toggle('low',s<=15);
- $noise.style.width=n+'%';$noise.style.background=n>75?'var(--hot)':n>45?'var(--ginger)':'var(--calm)';}
+ $noise.style.width=n+'%';const nc=n>75?'var(--hot)':n>45?'var(--ginger)':'var(--calm)';$noise.style.background=nc;
+ $mS.textContent=st.score;$mT.textContent=tm;$mT.classList.toggle('low',s<=15);$mN.style.width=n+'%';$mN.style.background=nc;}
+const $mS=document.getElementById('m-score'),$mT=document.getElementById('m-time'),$mN=document.getElementById('m-noise');
 const ovStart=document.getElementById('ov-start'),ovPause=document.getElementById('ov-pause'),ovEnd=document.getElementById('ov-end');
-function start(){ac();reset();st.mode='play';ovStart.hidden=true;ovEnd.hidden=true;ovPause.hidden=true;held.clear();pressed.clear();
+function start(){ac();goFull();reset();st.mode='play';ovStart.hidden=true;ovEnd.hidden=true;ovPause.hidden=true;held.clear();pressed.clear();
  musicStart();purrStart();
  if(curCat==='stray'){toast('<b>Бродяга</b> запрыгнул в квартиру через форточку. Хозяев нет!');}
  else say(CD.name+', мы ушли! Веди себя хорошо!',1.05,1.02,'f');}
@@ -1268,7 +1360,8 @@ function end(){
 document.getElementById('btn-start').addEventListener('click',start);
 document.getElementById('btn-again').addEventListener('click',start);
 document.getElementById('btn-resume').addEventListener('click',togglePause);
-function bindToggle(id,get,set){const b=document.getElementById(id);b.addEventListener('click',()=>{set(!get());b.setAttribute('aria-pressed',String(get()));});}
+function bindToggle(id,get,set){const els=[document.getElementById(id),...document.querySelectorAll('[data-tog="'+id+'"]')];const sync=()=>els.forEach(b=>b.setAttribute('aria-pressed',String(get())));
+ els.forEach(b=>b.addEventListener('click',e=>{e.preventDefault();ac();set(!get());sync();}));sync();}
 bindToggle('t-music',()=>musicOn,v=>{musicOn=v;if(AU.c)AU.music.gain.setTargetAtTime(v?.42:0,AU.c.currentTime,.05);});
 bindToggle('t-sfx',()=>sfxOn,v=>{sfxOn=v;if(AU.c)AU.sfx.gain.setTargetAtTime(v?1:0,AU.c.currentTime,.05);});
 bindToggle('t-voice',()=>voiceOn,v=>{voiceOn=v;if(!v&&'speechSynthesis' in window)try{speechSynthesis.cancel();}catch(e){}});
@@ -1278,7 +1371,38 @@ function frame(now){const dt=Math.min(1/30,(now-last)/1000);last=now;
  if(st.mode==='play'){update(dt);hud();}
  else if(st.mode==='start'){st.time+=dt;for(const l of lampSway){l.v+=(-14*l.a-1.2*l.v)*dt;l.a+=l.v*dt;}}
  pressed.clear();render(now);if(st.mode!=='play')drawPreviews(now);requestAnimationFrame(frame);}
-buildPickers();reset();
+
+/* =========================================================
+   MOBILE: layout, joystick, pause, fullscreen
+   ========================================================= */
+const stageEl=document.getElementById('stage');let MOB=false;
+function isMob(){return (matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0&&!matchMedia('(pointer:fine)').matches)&&Math.min(innerWidth,innerHeight)<820;}
+function layout(){MOB=isMob();const land=innerWidth>=innerHeight;document.body.classList.toggle('mob',MOB);document.body.classList.toggle('portrait',MOB&&!land);
+ let vw=320;if(MOB&&land){const w=stageEl.clientWidth||innerWidth,h=stageEl.clientHeight||innerHeight;vw=clamp(Math.round(180*w/h),240,420);}
+ if(vw!==VW||cv.width!==vw*S){VW=vw;cv.width=VW*S;cv.height=720;LC.width=VW*2;LC.height=360;buildVig();st.cam=clamp(st.cam,0,W-VW);}}
+let layT=0;const relayout=()=>{clearTimeout(layT);layT=setTimeout(layout,120);};
+addEventListener('resize',relayout);addEventListener('orientationchange',relayout);if(window.visualViewport)visualViewport.addEventListener('resize',relayout);
+function goFull(){if(!MOB)return;try{const d=document.documentElement,f=d.requestFullscreen||d.webkitRequestFullscreen;
+ if(f&&!document.fullscreenElement){const p=f.call(d,{navigationUI:'hide'});const lock=()=>{try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{});}catch(_){}};
+  if(p&&p.then)p.then(lock,()=>{});else lock();}}catch(_){}}
+document.getElementById('m-pause').addEventListener('click',e=>{e.preventDefault();if(st.mode==='play'||st.mode==='pause')togglePause();});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+stageEl.addEventListener('dblclick',e=>e.preventDefault());
+stageEl.addEventListener('contextmenu',e=>{if(MOB)e.preventDefault();});
+['touchend','click'].forEach(t=>document.addEventListener(t,()=>{if(AU.c&&AU.c.state!=='running')AU.c.resume();},{passive:true}));
+(()=>{const joy=document.getElementById('joy'),base=joy.querySelector('.joy-base'),knob=document.getElementById('knob');let id=null,cx=0,cy=0,R=50;
+ const setK=(k,on)=>{if(on){if(!held.has(k))pressed.add(k);held.add(k);}else held.delete(k);};
+ const apply=(nx,ny)=>{knob.style.transform='translate(calc(-50% + '+(nx*R).toFixed(1)+'px),calc(-50% + '+(ny*R).toFixed(1)+'px))';
+  setK('left',nx<-.33);setK('right',nx>.33);setK('up',ny<-.62);setK('down',ny>.62);};
+ const mv=e=>{let dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy);if(d>R){dx*=R/d;dy*=R/d;}apply(dx/R,dy/R);};
+ joy.addEventListener('pointerdown',e=>{e.preventDefault();ac();id=e.pointerId;try{joy.setPointerCapture(id);}catch(_){}
+  const r=base.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;R=r.width*.42;joy.classList.add('on');mv(e);});
+ joy.addEventListener('pointermove',e=>{if(e.pointerId===id){e.preventDefault();mv(e);}});
+ const end=e=>{if(e.pointerId!==id)return;id=null;joy.classList.remove('on');apply(0,0);};
+ ['pointerup','pointercancel','lostpointercapture'].forEach(t=>joy.addEventListener(t,end));
+ joy.addEventListener('contextmenu',e=>e.preventDefault());
+})();
+layout();buildPickers();reset();
 const go=()=>requestAnimationFrame(frame);
 if(document.fonts&&document.fonts.load){Promise.race([document.fonts.load('800 28px Rubik','АБВ'),new Promise(r=>setTimeout(r,1500))]).then(go,go);}else go();
 })();
