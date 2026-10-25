@@ -359,6 +359,15 @@ function renderPips(){document.getElementById('h-pips').innerHTML=[0,1,2,3,4,5].
 const CR=.2,CH=.42;
 function supportY(x,z,y,r){let best=0;for(const s of solids){if(x+r>s.x0&&x-r<s.x1&&z+r>s.z0&&z-r<s.z1&&s.y1<=y+.13&&s.y1>best)best=s.y1;}
  if(Math.hypot(x-V.p.x,z-V.p.z)<.34&&.18<=y+.13&&.18>best)best=.18;return best;}
+function hitBox(s,x,z,r,y){return x+r>s.x0&&x-r<s.x1&&z+r>s.z0&&z-r<s.z1&&y+.12<s.y1&&y+CH>s.y0;}
+/* axis-separated move: never pushes through thin panels */
+function moveXZ(p,dx,dz,r,y){
+ if(dx){const nx=p.x+dx;let x=nx;for(const s of solids){if(hitBox(s,x,p.z,r,y)){x=dx>0?Math.min(x,s.x0-r-.001):Math.max(x,s.x1+r+.001);}}
+  for(const s of solids)if(hitBox(s,x,p.z,r,y)){x=p.x;break;}p.x=x;}
+ if(dz){const nz=p.z+dz;let z=nz;for(const s of solids){if(hitBox(s,p.x,z,r,y)){z=dz>0?Math.min(z,s.z0-r-.001):Math.max(z,s.z1+r+.001);}}
+  for(const s of solids)if(hitBox(s,p.x,z,r,y)){z=p.z;break;}p.z=z;}
+ p.x=clamp(p.x,-RX+r,RX-r);p.z=clamp(p.z,-RZ+r,RZ-r);}
+function stuckIn(p,r){for(const s of solids)if(hitBox(s,p.x,p.z,r*.9,p.y))return s;return null;}
 function collideXZ(p,r,oldY){for(const s of solids){if(p.x+r>s.x0&&p.x-r<s.x1&&p.z+r>s.z0&&p.z-r<s.z1&&oldY+.12<s.y1&&oldY+CH>s.y0){
   const dl=p.x+r-s.x0,dr=s.x1-(p.x-r),db=p.z+r-s.z0,df=s.z1-(p.z-r),m=Math.min(dl,dr,db,df);if(m===dl)p.x=s.x0-r;else if(m===dr)p.x=s.x1+r;else if(m===db)p.z=s.z0-r;else p.z=s.z1+r;}}
  p.x=clamp(p.x,-RX+r,RX-r);p.z=clamp(p.z,-RZ+r,RZ-r);}
@@ -371,10 +380,10 @@ function doClaw(){if(cat.clawCd>0)return;cat.clawCd=.2;cat.clawT=.22;const f=fwd
  {const s=nearScratch();if(s){s.n++;scratches++;S.scratch();addScore(6,cat.p.clone().add(new T3.Vector3(0,.9,0)),'');addNoise(3);fluff(new T3.Vector3(hx,hy,hz),s.mesh.material.color);
   if(s.n%3===0&&s.n<=30){s.mesh.material=s.mesh.material.clone();s.mesh.material.color.multiplyScalar(.93);}return;}}
  const w=nearWall();if(w){cat.face=Math.atan2(-w.nx,-w.nz);let pos=null;
-  for(let k=0;k<8&&!pos;k++){const along=(Math.random()*2-1)*.4,yy=clamp(cat.p.y+.15+Math.random()*.8,.2,3.4);
+  for(let k=0;k<10&&!pos;k++){const along=(Math.random()*2-1)*.6,yy=clamp(cat.p.y+.1+Math.random()*1.0,.2,3.4);
    const cand=new T3.Vector3(w.nx!==0?w.x0+w.nx*.012:clamp(cat.p.x+along,Math.min(w.x0,w.x1)+.2,Math.max(w.x0,w.x1)-.2),yy,w.nz!==0?w.z0+w.nz*.012:clamp(cat.p.z+along,Math.min(w.z0,w.z1)+.2,Math.max(w.z0,w.z1)-.2));
    if(!decals.some(dd=>dd.position.distanceTo(cand)<.2))pos=cand;}
-  if(!pos){S.swish();pop(cat.p.clone().add(new T3.Vector3(0,.9,0)),'Тут уже всё ободрано!','#ffd0a0');return;}
+  if(!pos){S.swish();if(!cat.msgT||performance.now()-cat.msgT>2500){cat.msgT=performance.now();pop(cat.p.clone().add(new T3.Vector3(0,.9,0)),'Тут всё ободрано — иди к другой стене!','#ffd0a0');}return;}
   const dm=new T3.Mesh(new T3.PlaneGeometry(.4,.4),new T3.MeshLambertMaterial({map:texTorn,transparent:true}));dm.position.copy(pos);dm.rotation.y=Math.atan2(w.nx,w.nz);dm.rotation.z=Math.random()*TAU;scene.add(dm);decals.push(dm);
   scratches++;S.scratch();addScore(9,pos,'Обои');addNoise(3);fluff(pos,LC('#efe4cc'));return;}
  S.swish();}
@@ -406,21 +415,26 @@ function update(dt){
  if(pressed.has('jump')){if(cat.onGround||cat.coy>0){cat.v.y=5.6*Math.sqrt(CD.jump);cat.onGround=false;cat.coy=0;S.jump();}else if(!cat.dj){cat.dj=true;cat.v.y=4.8*Math.sqrt(CD.jump);cat.flip=.45;S.jump();pop(cat.p.clone().add(new T3.Vector3(0,.7,0)),'Двойной!','#9fe3ff');}}
  cat.flip=Math.max(0,(cat.flip||0)-dt);cat.coy=Math.max(0,(cat.coy||0)-dt);
  cat.v.y-=GRAV*dt;const oldY=cat.p.y;
- cat.p.x+=cat.v.x*dt;cat.p.z+=cat.v.z*dt;collideXZ(cat.p,CR,oldY);
+ // vertical first (support under current footprint), then horizontal at the new height
  cat.p.y+=cat.v.y*dt;const sup=supportY(cat.p.x,cat.p.z,oldY,CR*.8);
  if(cat.p.y<=sup&&cat.v.y<=0){if(!cat.onGround){if(cat.fallFrom-sup>1.2){addNoise(3);S.thud();}else S.land();}cat.dj=false;cat.coy=.1;cat.p.y=sup;cat.v.y=0;cat.onGround=true;cat.fallFrom=sup;}
  else{if(cat.onGround&&cat.p.y>sup+.02){cat.onGround=false;}if(!cat.onGround)cat.fallFrom=Math.max(cat.fallFrom,cat.p.y);}
+ let rdx=0,rdz=0;if(cat.onGround&&Math.abs(cat.p.y-.18)<.02&&Math.hypot(cat.p.x-V.p.x,cat.p.z-V.p.z)<.34){rdx=Math.sin(V.dir)*.7*dt;rdz=Math.cos(V.dir)*.7*dt;if(Math.random()<dt*.6)pop(cat.p.clone().add(new T3.Vector3(0,.8,0)),'Поехали!','#9fe3ff');}
+ moveXZ(cat.p,cat.v.x*dt+rdx,cat.v.z*dt+rdz,CR,Math.min(oldY,cat.p.y));
+ if(cat.onGround){const s2=supportY(cat.p.x,cat.p.z,cat.p.y,CR*.8);if(s2<cat.p.y-.02){cat.onGround=false;}else if(s2>cat.p.y)cat.p.y=s2;}
  // ceiling of furniture when jumping: hit bottom of solid above
  for(const s of solids){if(cat.v.y>0&&cat.p.x+CR*.8>s.x0&&cat.p.x-CR*.8<s.x1&&cat.p.z+CR*.8>s.z0&&cat.p.z-CR*.8<s.z1&&oldY+CH<=s.y0+.01&&cat.p.y+CH>s.y0){cat.p.y=s.y0-CH;cat.v.y=0;}}
  // ride vacuum
- if(cat.onGround&&Math.abs(cat.p.y-.18)<.02&&Math.hypot(cat.p.x-V.p.x,cat.p.z-V.p.z)<.34){cat.p.x+=Math.sin(V.dir)*.7*dt;cat.p.z+=Math.cos(V.dir)*.7*dt;if(Math.random()<dt*.6)pop(cat.p.clone().add(new T3.Vector3(0,.8,0)),'Поехали!','#9fe3ff');}
+ // unstick safety net
+ {const st=stuckIn(cat.p,CR);if(st){if(st.y1-cat.p.y<.55){cat.p.y=st.y1;cat.v.y=0;cat.onGround=true;}else{cat.stuckT=(cat.stuckT||0)+dt;if(cat.stuckT>.2&&cat.safe){cat.tp=(cat.tp||0)+1;cat.p.copy(cat.safe);cat.v.set(0,0,0);cat.stuckT=0;}}}
+  else{cat.stuckT=0;if(cat.onGround){if(!cat.safe)cat.safe=new T3.Vector3();cat.safe.copy(cat.p);}}}
  // vacuum
  V.t+=dt;const vs=.7;const nvx=V.p.x+Math.sin(V.dir)*vs*dt,nvz=V.p.z+Math.cos(V.dir)*vs*dt;let blocked=Math.abs(nvx)>RX-.4||Math.abs(nvz)>RZ-.4;
  if(!blocked)for(const s of solids){if(s.y0<.15&&nvx+.32>s.x0&&nvx-.32<s.x1&&nvz+.32>s.z0&&nvz-.32<s.z1){blocked=true;break;}}
  if(blocked||Math.random()<dt*.15)V.dir+=1.2+Math.random()*2;else{V.p.x=nvx;V.p.z=nvz;}
  vac.position.copy(V.p);vac.rotation.y=V.dir;vac.userData.led.material.color.copy(LC(Math.floor(V.t*3)%2?'#ff3030':'#601010'));
  const dvx=cat.p.x-V.p.x,dvz=cat.p.z-V.p.z,dvd=Math.hypot(dvx,dvz);V.beep-=dt;
- if(dvd<.5&&cat.p.y<.12){cat.p.x+=dvx/dvd*.05;cat.p.z+=dvz/dvd*.05;if(V.beep<=0){V.beep=1.2;S.beep();pop(V.p.clone().add(new T3.Vector3(0,.5,0)),'Бип-бип!','#ff9a9a');}}
+ if(dvd<.5&&cat.p.y<.12){moveXZ(cat.p,dvx/dvd*.05,dvz/dvd*.05,CR,cat.p.y);if(V.beep<=0){V.beep=1.2;S.beep();pop(V.p.clone().add(new T3.Vector3(0,.5,0)),'Бип-бип!','#ff9a9a');}}
  // items
  for(const it of ITEMS){if(it.state!=='move')continue;const o=it.p.y;it.v.y-=GRAV*dt;it.p.x+=it.v.x*dt;it.p.z+=it.v.z*dt;collideXZ(it.p,it.r*.7,o);it.p.y+=it.v.y*dt;
   it.mesh.rotation.x+=it.spin.x*dt;it.mesh.rotation.z+=it.spin.z*dt;it.mesh.rotation.y+=it.spin.y*dt;
@@ -454,8 +468,13 @@ function animCat(t,dt){catG.position.copy(cat.p);catG.rotation.y=cat.face;const 
  const bob=cat.onGround&&sp>.3?Math.abs(Math.sin(ph))*.02:0;catG.position.y+=bob;}
 function updCamera(dt){const pitch=.42,dist=window.innerWidth<window.innerHeight?3.6:3.1;camTgt.set(cat.p.x,cat.p.y+.45,cat.p.z);
  const want=new T3.Vector3(camTgt.x+Math.sin(yaw)*Math.cos(pitch)*dist,camTgt.y+Math.sin(pitch)*dist+.2,camTgt.z+Math.cos(yaw)*Math.cos(pitch)*dist);
+ {const d=want.clone().sub(camTgt),len=d.length();d.divideScalar(len);let tmin=len;
+  for(const s of solids){if(s.y1-s.y0<.1&&s.y1<.6)continue;let t0=0,t1=tmin,ok=true;for(const [o,dd,a,b] of [[camTgt.x,d.x,s.x0-.08,s.x1+.08],[camTgt.y,d.y,s.y0-.08,s.y1+.08],[camTgt.z,d.z,s.z0-.08,s.z1+.08]]){
+    if(Math.abs(dd)<1e-6){if(o<a||o>b){ok=false;break;}}else{let ta=(a-o)/dd,tb=(b-o)/dd;if(ta>tb){const q=ta;ta=tb;tb=q;}t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1){ok=false;break;}}}
+   if(ok&&t0>.05&&t0<tmin)tmin=t0;}
+  if(tmin<len)want.copy(camTgt).addScaledVector(d,Math.max(.45,tmin-.12));}
  want.x=clamp(want.x,-RX+.2,RX-.2);want.z=clamp(want.z,-RZ+.2,RZ-.2);want.y=clamp(want.y,.4,3.6);
- if(!camInit){camPos.copy(want);camInit=true;}camPos.lerp(want,Math.min(1,dt*6));camera.position.copy(camPos);
+ if(!camInit){camPos.copy(want);camInit=true;}camPos.lerp(want,Math.min(1,dt*(camPos.distanceTo(camTgt)>want.distanceTo(camTgt)+.05?20:6)));camera.position.copy(camPos);
  if(shakeT>0){camera.position.x+=(Math.random()-.5)*.06;camera.position.y+=(Math.random()-.5)*.05;shakeT-=dt;}camera.lookAt(camTgt);}
 /* ---------------- context hints ---------------- */
 const arrow=new T3.Mesh(new T3.ConeGeometry(.07,.16,4),new T3.MeshBasicMaterial({color:LC('#ffd34a')}));arrow.rotation.x=Math.PI;arrow.visible=false;scene.add(arrow);
@@ -509,7 +528,7 @@ function frame(now){const dt=Math.min(1/30,(now-last)/1000);last=now;const t=now
  animCat(t,dt);updCamera(dt);hud(state==='play'?dt:0);ctxHints(dt,t);tvT+=dt;if(tvT>.08){tvT=0;drawTV(t);}
  pressed.clear();renderer.render(scene,camera);requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
-window.__g={cat,ITEMS,decals,get state(){return state;},get score(){return score;},start,
+window.__g={set t(v){timeLeft=v;},stuck:()=>!!stuckIn(cat.p,CR),cat,ITEMS,decals,get state(){return state;},get score(){return score;},start,
  sim(keys,press,n){for(let i=0;i<n;i++){held.clear();keys.forEach(k=>held.add(k));if(i===0)press.forEach(k=>pressed.add(k));update(1/60);pressed.clear();}return [+cat.p.x.toFixed(2),+cat.p.y.toFixed(2),+cat.p.z.toFixed(2),cat.onGround];}};
 })();
 </script>
