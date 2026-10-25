@@ -63,6 +63,12 @@ body.mob #ctl{display:block}
 .cb .j{left:31%;bottom:0;width:38%;height:38%;background:rgba(243,154,69,.9);color:#2a1206;font-size:12px}
 .cb .c{left:33%;top:0}.cb .p{left:0;top:33%}.cb .m{right:0;top:33%}
 .cb button.on{transform:scale(.9);filter:brightness(1.3)}
+.ctx{position:fixed;z-index:3;left:50%;bottom:max(46px,calc(env(safe-area-inset-bottom,0px) + 46px));transform:translateX(-50%);max-width:min(92vw,520px);background:rgba(255,247,234,.95);color:#24160f;border-radius:999px;padding:8px 16px;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,.4);pointer-events:none;text-align:center}
+.ctx b{color:#b8501b}.ctx.tip{background:rgba(26,19,32,.82);color:var(--fg)}.ctx.tip b{color:var(--or)}
+body.mob .ctx{bottom:max(12px,env(safe-area-inset-bottom,0px));max-width:calc(100vw - 2*min(48vh,200px) - 40px);font-size:13px;border-radius:14px;padding:6px 10px}
+.how{display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;max-width:640px}
+.how span{background:rgba(255,255,255,.07);border-radius:10px;padding:5px 9px;font-size:12.5px;color:var(--muted)}.how b{color:var(--or)}
+@media (max-height:520px){.how span{font-size:11px;padding:3px 7px}}
 .hint{position:fixed;z-index:2;left:50%;bottom:max(12px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:12px;color:var(--muted);background:rgba(12,7,16,.55);padding:6px 12px;border-radius:999px;pointer-events:none;white-space:nowrap}
 body.mob .hint{display:none}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -78,7 +84,7 @@ body.mob .hint{display:none}
   <div class="st"><i>Соседи</i><div class="pips" id="h-pips"></div></div>
   <div class="tg"><button class="ic" id="t-mus" type="button" aria-pressed="true">Муз</button><button class="ic" id="t-sfx" type="button" aria-pressed="true">Звук</button></div>
 </div>
-<div class="hint" id="hint" hidden>WASD — бег · мышь — поворот камеры · Пробел — прыжок · J — лапа · K — когти · L — мяу · P — пауза</div>
+<div class="hint" id="hint" hidden>WASD — бег · мышь — камера · Пробел — прыжок (дважды — двойной) · J — лапа · K — когти · L — мяу · P — пауза</div>
 <div id="ctl">
   <div class="joy" id="joy"><div class="joy-b"></div><div class="joy-k" id="knob"></div></div>
   <div class="cb">
@@ -88,10 +94,12 @@ body.mob .hint{display:none}
     <button class="j" data-k="jump" type="button">Прыжок</button>
   </div>
 </div>
+<div class="ctx" id="ctx" hidden></div>
 <div class="toast" id="toast"></div>
 <div class="ov" id="ov-start">
   <h1>Кошачий беспредел<span>3D</span></h1>
   <p>Трёхмерная квартира: кухня и гостиная. Хозяева вернутся через 2 минуты 50 секунд. Запрыгивай на мебель, сталкивай вещи, дери обои и диван, катайся на робот-пылесосе и зли соседей.</p>
+  <div class="how"><span><b>Прыжок</b> ×2 — двойной прыжок до верхних полок</span><span><b>Лапа</b> — столкнуть вещь (над ней появится стрелка)</span><span><b>Когти</b> — у стены: обои, у дивана и штор — подрать</span><span><b>Мяу</b> — шум для соседей</span></div>
   <div class="cards" id="cards" role="radiogroup" aria-label="Выбор кота"></div>
   <div class="row"><button class="btn" id="b-start" type="button">Играть</button><a class="btn ghost" href="index.html">Другая версия</a></div>
   <p class="keys">Компьютер: WASD или стрелки — бег, мышь с зажатой кнопкой или Q/E — поворот камеры, Пробел — прыжок, J — лапа, K — когти, L — мяу. Телефон: джойстик слева, кнопки справа, провести пальцем по экрану — повернуть камеру.</p>
@@ -356,16 +364,23 @@ function collideXZ(p,r,oldY){for(const s of solids){if(p.x+r>s.x0&&p.x-r<s.x1&&p
  p.x=clamp(p.x,-RX+r,RX-r);p.z=clamp(p.z,-RZ+r,RZ-r);}
 /* actions */
 const fwd=()=>new T3.Vector3(Math.sin(cat.face),0,Math.cos(cat.face));
-function doPaw(){cat.pawT=.25;S.swish();const f=fwd();let hit=0;for(const it of ITEMS){if(it.state==='broken')continue;const d=it.p.clone().sub(cat.p);const dy=d.y;d.y=0;const dist=d.length();
- if(dist<.62&&dy>-.25&&dy<.7&&(dist<.15||d.normalize().dot(f)>.25)){it.state='move';it.v.set(f.x*2.6*CD.push,1.4,f.z*2.6*CD.push);it.spin.set(Math.random()*8-4,Math.random()*6-3,Math.random()*8-4);hit++;}}
+function doPaw(){cat.pawT=.25;S.swish();const tgt=reachItem();if(tgt)cat.face=Math.atan2(tgt.p.x-cat.p.x,tgt.p.z-cat.p.z);const f=fwd();let hit=0;for(const it of ITEMS){if(it.state==='broken')continue;const d=it.p.clone().sub(cat.p);const dy=d.y;d.y=0;const dist=d.length();
+ if(dist<.78&&dy>-.25&&dy<.75&&(dist<.15||d.normalize().dot(f)>.2)){it.state='move';const up=dy>.25,k=up?-2.2:3.2;it.v.set(f.x*k*CD.push,up?.6:1.7,f.z*k*CD.push);it.spin.set(Math.random()*8-4,Math.random()*6-3,Math.random()*8-4);hit++;}}
  tease();}
 function doClaw(){if(cat.clawCd>0)return;cat.clawCd=.2;cat.clawT=.22;const f=fwd(),hx=cat.p.x+f.x*.35,hz=cat.p.z+f.z*.35,hy=cat.p.y+.35;
- for(const s of scratchables){if(hx>s.x0-.15&&hx<s.x1+.15&&hz>s.z0-.15&&hz<s.z1+.15&&hy>s.y0-.2&&hy<s.y1+.3){s.n++;scratches++;S.scratch();addScore(6,cat.p.clone().add(new T3.Vector3(0,.9,0)),'');addNoise(3);fluff(new T3.Vector3(hx,hy,hz),s.mesh.material.color);
+ {const s=nearScratch();if(s){s.n++;scratches++;S.scratch();addScore(6,cat.p.clone().add(new T3.Vector3(0,.9,0)),'');addNoise(3);fluff(new T3.Vector3(hx,hy,hz),s.mesh.material.color);
   if(s.n%3===0&&s.n<=30){s.mesh.material=s.mesh.material.clone();s.mesh.material.color.multiplyScalar(.93);}return;}}
- for(const w of walls){const d=(hx-w.x0)*w.nx+(hz-w.z0)*w.nz;if(d<.32&&d>-.1){const along=w.nx!==0?hz:hx;const pos=new T3.Vector3(w.nx!==0?w.x0+w.nx*.012:hx,clamp(hy+.15+Math.random()*.4,.25,2.6),w.nz!==0?w.z0+w.nz*.012:hz);
-   if(decals.some(dd=>dd.position.distanceTo(pos)<.16)){S.swish();return;}const dm=new T3.Mesh(new T3.PlaneGeometry(.38,.38),new T3.MeshLambertMaterial({map:texTorn,transparent:true}));dm.position.copy(pos);dm.rotation.y=Math.atan2(w.nx,w.nz);dm.rotation.z=Math.random()*TAU;scene.add(dm);decals.push(dm);
-   scratches++;S.scratch();addScore(9,pos,'Обои');addNoise(3);fluff(pos,LC('#efe4cc'));return;}}
+ const w=nearWall();if(w){cat.face=Math.atan2(-w.nx,-w.nz);let pos=null;
+  for(let k=0;k<8&&!pos;k++){const along=(Math.random()*2-1)*.4,yy=clamp(cat.p.y+.15+Math.random()*.8,.2,3.4);
+   const cand=new T3.Vector3(w.nx!==0?w.x0+w.nx*.012:clamp(cat.p.x+along,Math.min(w.x0,w.x1)+.2,Math.max(w.x0,w.x1)-.2),yy,w.nz!==0?w.z0+w.nz*.012:clamp(cat.p.z+along,Math.min(w.z0,w.z1)+.2,Math.max(w.z0,w.z1)-.2));
+   if(!decals.some(dd=>dd.position.distanceTo(cand)<.2))pos=cand;}
+  if(!pos){S.swish();pop(cat.p.clone().add(new T3.Vector3(0,.9,0)),'Тут уже всё ободрано!','#ffd0a0');return;}
+  const dm=new T3.Mesh(new T3.PlaneGeometry(.4,.4),new T3.MeshLambertMaterial({map:texTorn,transparent:true}));dm.position.copy(pos);dm.rotation.y=Math.atan2(w.nx,w.nz);dm.rotation.z=Math.random()*TAU;scene.add(dm);decals.push(dm);
+  scratches++;S.scratch();addScore(9,pos,'Обои');addNoise(3);fluff(pos,LC('#efe4cc'));return;}
  S.swish();}
+function nearWall(){for(const w of walls){const d=(cat.p.x-w.x0)*w.nx+(cat.p.z-w.z0)*w.nz;if(d<.8){const lo=w.nx!==0?Math.min(w.z0,w.z1):Math.min(w.x0,w.x1),hi=w.nx!==0?Math.max(w.z0,w.z1):Math.max(w.x0,w.x1),a=w.nx!==0?cat.p.z:cat.p.x;if(a>=lo-.1&&a<=hi+.1)return w;}}return null;}
+function nearScratch(){const f=fwd();for(const s of scratchables){const cx=clamp(cat.p.x,s.x0,s.x1),cz=clamp(cat.p.z,s.z0,s.z1);if(Math.hypot(cx-cat.p.x,cz-cat.p.z)<.6&&cat.p.y<s.y1+.3&&cat.p.y+.5>s.y0)return s;}return null;}
+function reachItem(){let best=null,bd=9;for(const it of ITEMS){if(it.state==='broken'||it.state==='move')continue;const dx=it.p.x-cat.p.x,dz=it.p.z-cat.p.z,dy=it.p.y-cat.p.y,dist=Math.hypot(dx,dz);if(dist<.75&&dy>-.25&&dy<.7&&dist<bd){bd=dist;best=it;}}return best;}
 function doMeow(){if(cat.meowT>0)return;cat.meowT=.6;S.meow();pop(cat.p.clone().add(new T3.Vector3(0,.8,0)),'Мяу!','#ffffff');score+=2;addNoise(8);tease();}
 function tease(){}
 function fluff(pos,col){for(let i=0;i<6;i++){const m=new T3.Mesh(new T3.BoxGeometry(.03,.03,.03),new T3.MeshLambertMaterial({color:col}));m.position.copy(pos);scene.add(m);shards.push({m,v:new T3.Vector3(Math.random()*1.6-.8,Math.random()*1.4,Math.random()*1.6-.8),t:1.4,rest:0,fade:1});}}
@@ -388,11 +403,12 @@ function update(dt){
   if(Math.abs(ix)>.3&&joyV.x!==0){let dy=(cat.face+Math.PI)-yaw;while(dy>Math.PI)dy-=TAU;while(dy<-Math.PI)dy+=TAU;yaw+=dy*Math.min(1,dt*.9);}}
  const tvx=mx*spd,tvz=mz*spd;cat.v.x+=(tvx-cat.v.x)*Math.min(1,dt*14);cat.v.z+=(tvz-cat.v.z)*Math.min(1,dt*14);
  if(cat.kb>0)cat.kb-=dt;
- if(pressed.has('jump')&&cat.onGround){cat.v.y=4.6*Math.sqrt(CD.jump);cat.onGround=false;S.jump();}
+ if(pressed.has('jump')){if(cat.onGround||cat.coy>0){cat.v.y=5.6*Math.sqrt(CD.jump);cat.onGround=false;cat.coy=0;S.jump();}else if(!cat.dj){cat.dj=true;cat.v.y=4.8*Math.sqrt(CD.jump);cat.flip=.45;S.jump();pop(cat.p.clone().add(new T3.Vector3(0,.7,0)),'Двойной!','#9fe3ff');}}
+ cat.flip=Math.max(0,(cat.flip||0)-dt);cat.coy=Math.max(0,(cat.coy||0)-dt);
  cat.v.y-=GRAV*dt;const oldY=cat.p.y;
  cat.p.x+=cat.v.x*dt;cat.p.z+=cat.v.z*dt;collideXZ(cat.p,CR,oldY);
  cat.p.y+=cat.v.y*dt;const sup=supportY(cat.p.x,cat.p.z,oldY,CR*.8);
- if(cat.p.y<=sup&&cat.v.y<=0){if(!cat.onGround){if(cat.fallFrom-sup>1.2){addNoise(3);S.thud();}else S.land();}cat.p.y=sup;cat.v.y=0;cat.onGround=true;cat.fallFrom=sup;}
+ if(cat.p.y<=sup&&cat.v.y<=0){if(!cat.onGround){if(cat.fallFrom-sup>1.2){addNoise(3);S.thud();}else S.land();}cat.dj=false;cat.coy=.1;cat.p.y=sup;cat.v.y=0;cat.onGround=true;cat.fallFrom=sup;}
  else{if(cat.onGround&&cat.p.y>sup+.02){cat.onGround=false;}if(!cat.onGround)cat.fallFrom=Math.max(cat.fallFrom,cat.p.y);}
  // ceiling of furniture when jumping: hit bottom of solid above
  for(const s of solids){if(cat.v.y>0&&cat.p.x+CR*.8>s.x0&&cat.p.x-CR*.8<s.x1&&cat.p.z+CR*.8>s.z0&&cat.p.z-CR*.8<s.z1&&oldY+CH<=s.y0+.01&&cat.p.y+CH>s.y0){cat.p.y=s.y0-CH;cat.v.y=0;}}
@@ -413,9 +429,9 @@ function update(dt){
    if(it.d.f&&vy>4.2){breakItem(it);continue;}
    if(sp<.01&&!it.scored&&it.startY>.3){it.scored=1;dropped++;addScore(it.d.f?Math.round(it.d.pts/2):it.d.pts,it.p.clone().add(new T3.Vector3(0,.4,0)),it.d.name);addNoise(10);S.thud();}
    else if(vy>2.5){S.thud();addNoise(3);}
-   if(it.k==='yarn'&&vy>2){it.v.y=vy*.45;}else{it.v.y=0;it.v.x*=.55;it.v.z*=.55;it.spin.multiplyScalar(.3);
-    if(Math.hypot(it.v.x,it.v.z)<.15){it.state='rest';it.mesh.rotation.x=0;it.mesh.rotation.z=it.k==='yarn'?it.mesh.rotation.z:0;}}}
-  else if(it.p.y<=sp+.01){it.v.x*=Math.pow(.15,dt);it.v.z*=Math.pow(.15,dt);}
+   if(it.k==='yarn'&&vy>2){it.v.y=vy*.45;}else{it.v.y=0;const dmp=sp<.01?.5:.92;it.v.x*=dmp;it.v.z*=dmp;it.spin.multiplyScalar(.3);
+    if(Math.hypot(it.v.x,it.v.z)<(sp<.01?.15:.05)){it.state='rest';it.mesh.rotation.x=0;it.mesh.rotation.z=it.k==='yarn'?it.mesh.rotation.z:0;}}}
+  else if(it.p.y<=sp+.01){const fr=Math.pow(sp<.01?.08:.6,dt);it.v.x*=fr;it.v.z*=fr;}
   it.mesh.position.copy(it.p);}
  // shards
  for(const s of shards){if(s.rest)continue;s.v.y-=GRAV*dt;s.m.position.addScaledVector(s.v,dt);if(s.spin){s.m.rotation.x+=s.spin*dt;s.m.rotation.z+=s.spin*dt*.7;}
@@ -432,7 +448,7 @@ function animCat(t,dt){catG.position.copy(cat.p);catG.rotation.y=cat.face;const 
  else if(sp>.3){const a=.7;L[0].rotation.x=Math.sin(ph)*a;L[1].rotation.x=Math.sin(ph+Math.PI)*a;L[2].rotation.x=Math.sin(ph+Math.PI)*a;L[3].rotation.x=Math.sin(ph)*a;}
  else for(const l of L)l.rotation.x*=.8;
  if(cat.pawT>0){L[1].rotation.x=-1.5*Math.sin((1-cat.pawT/.25)*Math.PI);}
- catG.rotation.x=cat.clawT>0?-.6:0;if(cat.clawT>0){L[0].rotation.x=-2.2+Math.sin(t*40)*.3;L[1].rotation.x=-2.2-Math.sin(t*40)*.3;}
+ catG.rotation.x=cat.flip>0?-(1-cat.flip/.45)*TAU:cat.clawT>0?-.6:0;if(cat.clawT>0){L[0].rotation.x=-2.2+Math.sin(t*40)*.3;L[1].rotation.x=-2.2-Math.sin(t*40)*.3;}
  const tl=parts3.tail;for(let i=1;i<tl.length;i++){tl[i].rotation.x=-.25+Math.sin(t*2.6+i*.5)*.12;tl[i].rotation.z=Math.sin(t*2+i*.6)*.15;}tl[0].rotation.x=sp>.3?-1.2:-.6;
  parts3.head.rotation.x=cat.meowT>0?-.35*Math.sin(cat.meowT/.6*Math.PI):Math.sin(t*.9)*.05;
  const bob=cat.onGround&&sp>.3?Math.abs(Math.sin(ph))*.02:0;catG.position.y+=bob;}
@@ -441,6 +457,18 @@ function updCamera(dt){const pitch=.42,dist=window.innerWidth<window.innerHeight
  want.x=clamp(want.x,-RX+.2,RX-.2);want.z=clamp(want.z,-RZ+.2,RZ-.2);want.y=clamp(want.y,.4,3.6);
  if(!camInit){camPos.copy(want);camInit=true;}camPos.lerp(want,Math.min(1,dt*6));camera.position.copy(camPos);
  if(shakeT>0){camera.position.x+=(Math.random()-.5)*.06;camera.position.y+=(Math.random()-.5)*.05;shakeT-=dt;}camera.lookAt(camTgt);}
+/* ---------------- context hints ---------------- */
+const arrow=new T3.Mesh(new T3.ConeGeometry(.07,.16,4),new T3.MeshBasicMaterial({color:LC('#ffd34a')}));arrow.rotation.x=Math.PI;arrow.visible=false;scene.add(arrow);
+const ctxEl=document.getElementById('ctx');let ctxT=0,tipI=0,tipT=0,lastCtx='';
+const TIPS=[['Прыжок','запрыгивай на мебель'],['Прыжок ещё раз в воздухе','двойной прыжок — так достанешь до верхних полок'],['Лапа','рядом с вещью — сталкивай её вниз'],['Когти','у стены — дерёшь обои, у дивана и штор — тоже'],['Мяу','шум, чтобы соседи начали стучать'],['Робот-пылесос','запрыгни на него и катайся']];
+function ctxHints(dt,t){if(state!=='play'){arrow.visible=false;ctxEl.hidden=true;return;}
+ const mob=document.body.classList.contains('mob'),K=mob?{paw:'Лапа',claw:'Когти',jump:'Прыжок'}:{paw:'J — лапа',claw:'K — когти',jump:'Пробел'};
+ const it=reachItem();if(it){arrow.visible=true;arrow.position.set(it.p.x,it.p.y+it.h+.18+Math.sin(t*6)*.04,it.p.z);arrow.rotation.y+=dt*3;}else arrow.visible=false;
+ ctxT-=dt;if(ctxT>0)return;ctxT=.15;let h='';
+ if(it)h='<b>'+K.paw+'</b> — столкнуть: '+it.d.name.toLowerCase();
+ else{const sc=nearScratch();if(sc)h='<b>'+K.claw+'</b> — подрать '+sc.name;else if(nearWall())h='<b>'+K.claw+'</b> — подрать обои';}
+ if(!h){tipT-=.15;if(tipT<=0){tipT=5;tipI=(tipI+1)%TIPS.length;}const tp=TIPS[tipI];h='<b>'+(tp[0]==='Прыжок'?K.jump:tp[0]==='Лапа'?K.paw:tp[0]==='Когти'?K.claw:tp[0])+'</b> — '+tp[1];ctxEl.classList.add('tip');}else ctxEl.classList.remove('tip');
+ if(h!==lastCtx){ctxEl.innerHTML=h;lastCtx=h;}ctxEl.hidden=false;}
 /* ---------------- HUD ---------------- */
 const hS=document.getElementById('h-score'),hT=document.getElementById('h-time'),hN=document.getElementById('h-noise');const v3=new T3.Vector3();
 function hud(dt){hS.textContent=score;const s=Math.ceil(timeLeft);hT.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');hT.classList.toggle('low',s<=20);hN.style.width=noise+'%';hN.style.background=noise>75?'var(--hot)':noise>45?'var(--or)':'var(--calm)';
@@ -478,10 +506,11 @@ let last=performance.now(),tvT=0,menuT=0;
 function frame(now){const dt=Math.min(1/30,(now-last)/1000);last=now;const t=now/1000;
  if(state==='play'){update(dt);}
  if(state==='menu'){menuT+=dt;cat.anim+=dt*.5;yaw=menuT*.25;cat.face=yaw+Math.PI*.7;}
- animCat(t,dt);updCamera(dt);hud(state==='play'?dt:0);tvT+=dt;if(tvT>.08){tvT=0;drawTV(t);}
+ animCat(t,dt);updCamera(dt);hud(state==='play'?dt:0);ctxHints(dt,t);tvT+=dt;if(tvT>.08){tvT=0;drawTV(t);}
  pressed.clear();renderer.render(scene,camera);requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
-window.__g={cat,ITEMS,get state(){return state;},get score(){return score;},start};
+window.__g={cat,ITEMS,decals,get state(){return state;},get score(){return score;},start,
+ sim(keys,press,n){for(let i=0;i<n;i++){held.clear();keys.forEach(k=>held.add(k));if(i===0)press.forEach(k=>pressed.add(k));update(1/60);pressed.clear();}return [+cat.p.x.toFixed(2),+cat.p.y.toFixed(2),+cat.p.z.toFixed(2),cat.onGround];}};
 })();
 </script>
 </body>

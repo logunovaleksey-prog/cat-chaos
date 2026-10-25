@@ -16,7 +16,7 @@
 html,body{margin:0;height:100%;background:#000;color:var(--fg);overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;font-family:"Press Start 2P",ui-monospace,monospace}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 #scr{display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
-#top{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 6px);right:max(8px,env(safe-area-inset-right,0px));display:flex;gap:6px}
+#top{position:fixed;z-index:7;top:calc(env(safe-area-inset-top,0px) + 6px);right:max(8px,env(safe-area-inset-right,0px));display:flex;gap:6px}
 #top a,#top button{font:inherit;font-size:9px;line-height:1;color:var(--fg);background:var(--btn);border:2px solid var(--line);border-radius:6px;padding:7px 8px;text-decoration:none;cursor:pointer}
 body.mob:not(.portrait) #top{width:min(150px,calc((100vw - 330px)/2));flex-wrap:wrap;justify-content:flex-end}
 body.mob:not(.portrait) #top a,body.mob:not(.portrait) #top button{font-size:8px;padding:6px 6px}
@@ -698,8 +698,9 @@ function seqTick(){const A=AU.c;if(!A||!SEQ.trk)return;if(state==='pause'){SEQ.n
 const held=new Set(),pressed=new Set();
 const KM={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',
  Space:'B',KeyX:'B',KeyK:'B',KeyZ:'A',KeyJ:'A',KeyC:'C',KeyL:'C',KeyV:'M',KeyM:'M',Enter:'START',KeyP:'START',Escape:'START'};
-addEventListener('keydown',e=>{const k=KM[e.code];if(!k)return;e.preventDefault();ac();if(!held.has(k))pressed.add(k);held.add(k);});
-addEventListener('keyup',e=>{const k=KM[e.code];if(k)held.delete(k);});
+addEventListener('keydown',e=>{const k=KM[e.code];if(!k)return;e.preventDefault();ac();if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+ if(e.repeat&&k==='START')return;if(k==='START'&&state==='pause'){closePause();return;}if(!held.has(k))pressed.add(k);held.add(k);},true);
+addEventListener('keyup',e=>{const k=KM[e.code];if(k){held.delete(k);e.preventDefault();}},true);
 addEventListener('blur',()=>{held.clear();if(state==='play'||state==='boss')openPause();});
 
 /* ---------- game state ---------- */
@@ -849,7 +850,7 @@ function update(dt){
  if(state==='intro'){if(stateT>2.2){setState('play');playMusic('zone');}return;}
  if(state==='over'){if(stateT>2.6){chooseCat(catKey);startAct(true);}return;}
  if(state==='bossIntro'){if(stateT>2.2)setState('boss');return;}
- if(state==='tally'){if(stateT>2.5&&(pressed.has('B')||pressed.has('START')||pressed.has('A')||pressed.has('tap'))){setState('select');stopMusic();playMusic('title');}return;}
+ if(state==='tally'){if(stateT>1.6&&(pressed.has('B')||pressed.has('START')||pressed.has('A')||pressed.has('tap'))){setState('select');stopMusic();playMusic('title');}return;}
  if(pressed.has('START')){openPause();return;}
  if(state==='play'||state==='boss'){
   updCat(dt);
@@ -941,7 +942,7 @@ function drawTitle(g){g.drawImage(TITLE_BG,0,0);const bob=Math.round(Math.sin(st
 function drawSelect(g){g.drawImage(SEL_BG,0,0);CATKEYS.forEach((k,i)=>{const x=12+i*102;if(i===selIdx){R(g,x-2,40,96,2,frameN%20<10?C.y1:C.y2);}
   g.drawImage(i===selIdx?CARDS_ON[i]:CARDS_OFF[i],x-2,40);});
  const mx=12+selIdx*102+46;R(g,mx-12,32,24,9,C.r1);tri(g,mx-4,41,mx+4,41,mx,45,C.r1);T(g,'1P',mx,33,C.white,{align:'center'});
- T(g,'СТРЕЛКИ - ВЫБОР   B - ГОТОВО',160,210,C.white,{align:'center',outline:C.ink});}
+ T(g,MOBQ()?'НАЖМИ НА КОТА, ЧТОБЫ ИГРАТЬ':'СТРЕЛКИ - ВЫБОР   B - ГОТОВО',160,210,C.white,{align:'center',outline:C.ink});}
 function render(){
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);
  if(state==='title'){drawTitle(ctx);return;}
@@ -999,9 +1000,10 @@ function boot(){prebuild();chooseCat('persik');requestAnimationFrame(frame);}
 const fontReady=document.fonts&&document.fonts.load?Promise.race([document.fonts.load('8px "Press Start 2P"','АБВ123'),new Promise(r=>setTimeout(r,2500))]):Promise.resolve();
 fontReady.then(boot,boot);
 // tap on canvas: title → select; select → pick card
-cv.addEventListener('pointerdown',e=>{ac();const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*VW,y=(e.clientY-r.top)/r.height*VH;
+const MOBQ=()=>document.body.classList.contains('mob');
+document.getElementById('wrap').addEventListener('pointerdown',e=>{ac();const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*VW,y=(e.clientY-r.top)/r.height*VH;
  if(state==='title'){pressed.add('tap');if(musicOn&&!SEQ.trk)playMusic('title');}
- else if(state==='select'&&y>40&&y<200){const i=Math.floor((x-10)/102);if(i>=0&&i<3){if(i===selIdx){pressed.add('B');}else{selIdx=i;SFX.select();}}}
+ else if(state==='select'&&y>40&&y<200){const i=Math.floor((x-10)/102);if(i>=0&&i<3){selIdx=i;pressed.add('B');}}
  else if(state==='tally')pressed.add('tap');});
 addEventListener('keydown',()=>{if(state==='title'&&musicOn&&!SEQ.trk)playMusic('title');},{once:false});
 </script>
@@ -1017,7 +1019,7 @@ addEventListener('keydown',()=>{if(state==='title'&&musicOn&&!SEQ.trk)playMusic(
  const press=(k,on)=>{if(on){if(!held.has(k))pressed.add(k);held.add(k);}else held.delete(k);};
  document.querySelectorAll('.bts button').forEach(b=>{const k=b.dataset.k;
   b.addEventListener('pointerdown',e=>{e.preventDefault();ac();press(k,true);b.classList.add('on');try{navigator.vibrate&&navigator.vibrate(10);}catch(_){}try{b.setPointerCapture(e.pointerId);}catch(_){}
-   if(state==='title')pressed.add('tap');});
+   if(state==='title'||state==='tally')pressed.add('tap');if(state==='select'&&(k==='B'||k==='A'))pressed.add('B');});
   const off=()=>{press(k,false);b.classList.remove('on');};['pointerup','pointercancel','lostpointercapture'].forEach(t=>b.addEventListener(t,off));b.addEventListener('contextmenu',e=>e.preventDefault());});
  const joy=document.getElementById('joy'),base=joy.querySelector('.joy-b'),knob=document.getElementById('knob');let id=null,cx=0,cy=0,R=50;
  const apply=(nx,ny)=>{knob.style.transform='translate(calc(-50% + '+(nx*R).toFixed(1)+'px),calc(-50% + '+(ny*R).toFixed(1)+'px))';press('left',nx<-.33);press('right',nx>.33);press('up',ny<-.6);press('down',ny>.6);};
@@ -1025,10 +1027,10 @@ addEventListener('keydown',()=>{if(state==='title'&&musicOn&&!SEQ.trk)playMusic(
  joy.addEventListener('pointerdown',e=>{e.preventDefault();ac();id=e.pointerId;try{joy.setPointerCapture(id);}catch(_){}const r=base.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;R=r.width*.42;mv(e);});
  joy.addEventListener('pointermove',e=>{if(e.pointerId===id){e.preventDefault();mv(e);}});
  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>joy.addEventListener(t,e=>{if(e.pointerId!==id)return;id=null;apply(0,0);}));
- const tog=(id,get,set)=>{const b=document.getElementById(id);b.addEventListener('click',()=>{ac();set(!get());b.setAttribute('aria-pressed',String(get()));});};
+ const tog=(id,get,set)=>{const b=document.getElementById(id);b.addEventListener('click',()=>{ac();set(!get());b.setAttribute('aria-pressed',String(get()));b.blur();});};
  tog('t-mus',()=>musicOn,v=>{musicOn=v;if(AU.c)AU.music.gain.value=v?.32:0;});
  tog('t-sfx',()=>sfxOn,v=>{sfxOn=v;if(AU.c)AU.sfx.gain.value=v?.6:0;});
- document.getElementById('t-st').addEventListener('click',()=>{ac();if(state==='pause')closePause();else if(state==='play'||state==='boss')openPause();else pressed.add('START');});
+ document.getElementById('t-st').addEventListener('click',e=>{ac();e.currentTarget.blur();if(state==='pause')closePause();else if(state==='play'||state==='boss')openPause();else pressed.add('START');});
  document.addEventListener('gesturestart',e=>e.preventDefault());
 })();
 </script>
